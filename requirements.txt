@@ -1,0 +1,3 @@
+pydantic~=2.3.0
+pandas~=2.1.1
+mrtparse~=2.2.0
