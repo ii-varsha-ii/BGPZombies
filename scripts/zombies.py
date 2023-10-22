@@ -1,11 +1,11 @@
 import json
+import logging
 import os
 import pickle
 from datetime import datetime
 
-import pandas as pd
-
 from scripts.constants import *
+from scripts.utils import get_utc_timestamp, intervals_str
 
 
 def create_prefix_with_peers_announce(updates):
@@ -113,79 +113,59 @@ def collect_zombies(announced, withdrawn):
     return intervals, zombie_intervals, count
 
 
-def run_zombies_test():
-    if not MONTH:
-        list_of_months = MONTHS
-    else:
-        list_of_months = [MONTH]
-
-    start_date = '01'
-    end_date = '30'
-    if START_DATE:
-        start_date = START_DATE
-    if END_DATE:
-        end_date = END_DATE
-
+def run_zombies_test(dates, rrc):
     total_zombies = 0
     total_zombie_intervals = {}
-    for month in list_of_months:
-        list_of_dates = [d.strftime('%Y%m%d') for d in pd.date_range(f'{YEAR}{month}{start_date}', f'{YEAR}{month}{end_date}')]
-        for date in list_of_dates:
-            announce_idx = 0
-            withdrawal_idx = 0
-            print(f"fetching for {date}")
-            total_zombie_intervals[date] = {RRC: {}}
-            graph_intervals = {date: {RRC: {}}}
-            while announce_idx < len(ANNOUNCEMENT_FILES) and withdrawal_idx < len(WITHDRAWAL_FILES):
-                _announcement = ANNOUNCEMENT_FILES[announce_idx]
-                _withdrawal = WITHDRAWAL_FILES[withdrawal_idx]
-                fa = open(f"{GROUPS_FOLDER}/{RRC}/{YEAR}.{month}/{date}/{_announcement}", 'rb')
-                updates = pickle.load(fa)
-                print(f"Loaded {_announcement} announce file")
-                prefix_with_peers_a = create_prefix_with_peers_announce(updates)
+    for date in dates:
+        date_obj = datetime.strptime(date, "%Y%m%d")
+        logging.debug(f"fetching for {date}")
+        total_zombie_intervals[date] = {rrc: {}}
+        graph_intervals = {date: {rrc: {}}}
+        fa = open(f"{GROUPS_FOLDER}/{rrc}/{date_obj.year}.{date_obj.month:02d}/{date}", 'rb')
+        updates = pickle.load(fa)
+        for announce, withdrawal in zip(announce_times, withdrawal_times):
+            start_a, end_a = get_utc_timestamp(date + " " + announce)
+            a_updates = [d for d in updates if start_a < d['time'] < end_a]
+            prefix_with_peers_a = create_prefix_with_peers_announce(a_updates)
 
-                fw = open(f"{GROUPS_FOLDER}/{RRC}/{YEAR}.{month}/{date}/{_withdrawal}", 'rb')
-                updates = pickle.load(fw)
-                print(f"Loaded {_withdrawal} withdraw file")
-                prefix_with_peers_w = create_prefix_with_peers_withdrawal(updates)
-                intervals, zombie_intervals, count = collect_zombies(prefix_with_peers_a, prefix_with_peers_w)
-                if count:
-                    print(f"Found {count} zombies")
-                    print(f"Found zombies at intervals: ", zombie_intervals)
-                    total_zombie_intervals[date][RRC][announce_idx] = zombie_intervals
-                graph_intervals[date][RRC][announce_idx] = intervals
-                total_zombies += count
-                announce_idx += 1
-                withdrawal_idx += 1
-            os.makedirs(os.path.dirname(f"{OUTPUT_FOLDER}/{RRC}/{YEAR}.{month}/"), exist_ok=True)
-            f = open(f"{OUTPUT_FOLDER}/{RRC}/{YEAR}.{month}/graph_intervals.{date}", "w")
-            json.dump(graph_intervals, f)
-            if not total_zombie_intervals[date][RRC]:
-                del total_zombie_intervals[date]
+            start_w, end_w = get_utc_timestamp(date + " " + withdrawal)
+            w_updates = [d for d in updates if start_w < d['time'] < end_w]
+            prefix_with_peers_w = create_prefix_with_peers_withdrawal(w_updates)
+            intervals, zombie_intervals, count = collect_zombies(prefix_with_peers_a, prefix_with_peers_w)
+            if count:
+                logging.debug(f"Found {count} zombies")
+                logging.debug(f"Found zombies at intervals: ", zombie_intervals)
+                total_zombie_intervals[date][rrc][intervals_str(announce, withdrawal)] = zombie_intervals
+            graph_intervals[date][rrc][intervals_str(announce, withdrawal)] = intervals
+            total_zombies += count
+        os.makedirs(os.path.dirname(f"{OUTPUT_FOLDER}/{rrc}/{date_obj.year}.{date_obj.month}/"), exist_ok=True)
+        f = open(f"{OUTPUT_FOLDER}/{rrc}/{date_obj.year}.{date_obj.month}/graph_intervals.{date}", "w")
+        json.dump(graph_intervals, f)
+        if not total_zombie_intervals[date][rrc]:
+            del total_zombie_intervals[date]
 
-    print_zombies(total_zombies, total_zombie_intervals)
+    print_zombies(total_zombies, total_zombie_intervals, rrc)
 
 
-def print_zombies(total_zombies, zombie_intervals):
+def print_zombies(total_zombies, zombie_intervals, rrc):
     print(
         "----------------------------------------------------------------------------------------------------------------------------------------")
     print(f"Total no of zombies: {total_zombies}")
     print(
         "----------------------------------------------------------------------------------------------------------------------------------------")
-    print(f"RRC: {RRC}")
+    print(f"RRC: {rrc}")
     print(
         "----------------------------------------------------------------------------------------------------------------------------------------")
-    print("|\tDATE\t\t|\tPREFIX\t\t|\tPEER\t\t\t|\tANNOUNCEMENT\t\t|\tEXP WITHDRAWAL\t|")
+    print("|\tDATE\t\t|\tPREFIX\t\t\t|\tPEER\t\t\t\t|\tANNOUNCEMENT\t\t|\tANNOUNCE, WITHDRAW\t|")
     print(
         "----------------------------------------------------------------------------------------------------------------------------------------")
     for date, values in zombie_intervals.items():
-        intervals = values[RRC]
-        for idx, prefix_vals in intervals.items():
-            exp_withdrawal = WITHDRAWAL_FILES[idx]
+        intervals = values[rrc]
+        for exp_interval, prefix_vals in intervals.items():
             for _prefix, peer_vals in prefix_vals.items():
                 prefix = _prefix
                 for _peer, _announcement in peer_vals.items():
                     peer = _peer
                     ts = int(_announcement[0])
                     announcement = datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-                    print(f"|\t{date}\t|\t{prefix}\t|\t{peer}\t|\t{announcement}\t|\t{exp_withdrawal}\t|")
+                    print(f"|\t{date}\t|\t{prefix}\t|\t{peer}\t|\t{announcement}\t|\t\t{exp_interval}\t\t\t|")

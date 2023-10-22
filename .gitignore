@@ -1,0 +1,6 @@
+groups/
+zip_files/
+venv/
+output/
+
+.idea/

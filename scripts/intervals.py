@@ -1,13 +1,11 @@
+import datetime
 import os
 import pickle
-from pathlib import Path
 
 from mrtparse import *
 
-import pandas as pd
-from constants import *
-from models import BgpUpdateMessage, Types, MRT_TYPES, BGP4MP_SUBTYPES, BGP4MP_MESSAGE_AS4_TYPES
-from utils import __validate_constants
+from scripts.constants import *
+from scripts.models import BgpUpdateMessage, Types, MRT_TYPES, BGP4MP_SUBTYPES, BGP4MP_MESSAGE_AS4_TYPES
 
 
 def __updates_sort_by_time(e):
@@ -37,13 +35,14 @@ def __fetch_as_path(path_attr):
     return []
 
 
-def create_intervals(start, end, month, start_date, end_date):
-    list_of_dates = [d.strftime('%Y%m%d') for d in pd.date_range(f'{YEAR}{month}{start_date}', f'{YEAR}{month}{end_date}')]
-    for date in list_of_dates:
+def fetch_aw(intervals, date, rrc):
+    bgp_updates = []
+    date_obj = datetime.datetime.strptime(date, "%Y%m%d")
+    for interval in intervals:
+        start, end = interval.split('-')
         step = start
-        bgp_updates = []
         while step != end:
-            file_name = f"{ZIP_FOLDER}/{RRC}/{YEAR}.{month}/updates.{date}.{step}"
+            file_name = f"{ZIP_FOLDER}/{rrc}/{date_obj.year}.{date_obj.month}/updates.{date}.{step}"
             print(file_name)
             step = __get_next_step(step)
             try:
@@ -85,34 +84,15 @@ def create_intervals(start, end, month, start_date, end_date):
                                 bgp_update_record.as_path = __fetch_as_path(path_attr)
                             bgp_updates.append(bgp_update_record)
 
-        bgp_updates_dict = [dict(_entry) for _entry in bgp_updates]
-        dir_name = os.path.dirname(f"{GROUPS_FOLDER}/{RRC}/{YEAR}.{month}/{date}/")
-        os.makedirs(dir_name, exist_ok=True)
-        pickle.dump(bgp_updates_dict, open(f"{GROUPS_FOLDER}/{RRC}/{YEAR}.{month}/{date}/{start}-{end}", "wb"))
+    bgp_updates_dict = [dict(_entry) for _entry in bgp_updates]
+    dir_name = os.path.dirname(f"{GROUPS_FOLDER}/{rrc}/{date_obj.year}.{date_obj.month}/")
+    os.makedirs(dir_name, exist_ok=True)
+    pickle.dump(bgp_updates_dict, open(f"{GROUPS_FOLDER}/{rrc}/{date_obj.year}.{date_obj.month}/{date}", "wb"))
 
 
-def create_groups():
-    if not MONTH:
-        list_of_months = MONTHS
-    else:
-        list_of_months = [MONTH]
+def create_intervals(dates, rrc):
+    INTERVALS = ANNOUNCEMENT_FILES + WITHDRAWAL_FILES
+    INTERVALS.sort()
 
-    start_date = '01'
-    end_date = '30'
-    if START_DATE:
-        start_date = START_DATE
-    if END_DATE:
-        end_date = END_DATE
-
-    for month in list_of_months:
-        ALL_FILES = ANNOUNCEMENT_FILES + WITHDRAWAL_FILES
-        ALL_FILES.sort()
-        for item in ALL_FILES:
-            start = item.split('-')[0]
-            end = item.split('-')[1]
-            create_intervals(start, end, month, start_date, end_date)
-
-
-if __name__ == '__main__':
-    if __validate_constants():
-        create_groups()
+    for date in dates:
+        fetch_aw(INTERVALS, date, rrc)

@@ -1,11 +1,18 @@
-from scripts.constants import RRC, RRCs, YEAR
+import calendar
+from datetime import datetime, timedelta
+
+import pandas as pd
 
 
-def __validate_constants():
-    if RRC and RRC not in RRCs:
-        print(f"RRC {RRC} does not exist")
-        return 0
-    if not YEAR:
-        print("Year not provided")
-        return 0
-    return 1
+def get_dates(start_date, end_date):
+    return [d.strftime('%Y%m%d') for d in
+            pd.date_range(start_date, end_date)]
+
+
+def get_utc_timestamp(date):
+    return [calendar.timegm(datetime.strptime(date, "%Y%m%d %H").utctimetuple()),
+            calendar.timegm((datetime.strptime(date, "%Y%m%d %H") + timedelta(hours=2)).utctimetuple())]
+
+
+def intervals_str(announce, withdrawal):
+    return ','.join([announce, withdrawal])

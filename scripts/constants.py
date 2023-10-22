@@ -1,14 +1,7 @@
-RRC = 'rrc06'
-YEAR = '2017'
-MONTH = '09'
-START_DATE = '01'
-END_DATE = '30'
-
 ZIP_FOLDER = f"zip_files"
 GROUPS_FOLDER = f"groups"
 OUTPUT_FOLDER = f"output"
 
-MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 RRCs = ['rrc00', 'rrc01', 'rrc03', 'rrc04', 'rrc05', 'rrc06', 'rrc07', 'rrc10', 'rrc11', 'rrc12', 'rrc13', 'rrc14',
         'rrc15', 'rrc19', 'rrc21', 'rrc24']
 
@@ -46,4 +39,11 @@ WITHDRAWAL_FILES = [
     "1400-1600",
     "1800-2000",
     "2200-2400"
+]
+
+announce_times = [
+    '00', '04', '08', '12', '16', '20'
+]
+withdrawal_times = [
+    '02', '06', '10', '14', '18', '22'
 ]
