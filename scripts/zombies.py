@@ -5,6 +5,7 @@ import pickle
 from datetime import datetime
 
 from scripts.constants import *
+from scripts.download import construct_updates_filename
 from scripts.utils import get_utc_timestamp, intervals_str
 
 
@@ -121,7 +122,8 @@ def run_zombies_test(dates, rrc):
         logging.debug(f"fetching for {date}")
         total_zombie_intervals[date] = {rrc: {}}
         graph_intervals = {date: {rrc: {}}}
-        fa = open(f"{GROUPS_FOLDER}/{rrc}/{date_obj.year}.{date_obj.month:02d}/{date}", 'rb')
+        file_name = construct_updates_filename(GROUPS_FOLDER, rrc, date_obj.year, date_obj.month, date)
+        fa = open(file_name, 'rb')
         updates = pickle.load(fa)
         for announce, withdrawal in zip(announce_times, withdrawal_times):
             start_a, end_a = get_utc_timestamp(date + " " + announce)

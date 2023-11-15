@@ -1,5 +1,6 @@
 import datetime
 import logging
+import os.path
 import sys
 
 from scripts.constants import RRCs
@@ -31,6 +32,7 @@ if __name__ == '__main__':
         start = datetime.datetime.strptime(args.startdate, "%Y%m%d")
         end = datetime.datetime.strptime(args.enddate, "%Y%m%d")
         year = start.year
+        month = start.month
         dates = get_dates(start, end)
     except Exception as e:
         logging.error(f"Date format error. {e}")
@@ -44,5 +46,11 @@ if __name__ == '__main__':
 
     if args.command == "intervals":
         create_intervals(dates, rrc)
+
     if args.command == "zombies":
         run_zombies_test(dates, rrc)
+    # start = '20170901'
+    # end = '20170902'
+    # dates = get_dates(start, end)
+    # rrc = 'rrc06'
+    # run_zombies_test(dates,rrc)
