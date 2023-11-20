@@ -17,8 +17,15 @@ RRC = Route collectors, which are physical machines where RIS ingests BGP routin
 
 ### Example:  
 
-`python3 run.py -s 20170909 -e 20170915 -r rrc06 intervals`
+`python3 run.py -s 20170909 -e 20170915 -r rrc06 intervals`    
 To download the BGP updates files and create intervals. 
 
-`python3 run.py -s 20170909 -e 20170915 -r rrc06 zombies`
+`python3 run.py -s 20170909 -e 20170915 -r rrc06 zombies`   
 To find the BGP stuck routes in that interval
+### Output:
+![image](https://github.com/ii-varsha-ii/BGPZombies/assets/28248941/f2f5eaee-f462-461b-ad42-02bf35b3ff21)
+
+The screenshot shows when the zombie appeared. 
+On 20170909, the PREFIX appeared in the PEER during the ANNOUCEMENT, but it didn't get withdrawn during the WITHDRAWAL interval. It gets reannounced again in the next 2 hours.
+
+
